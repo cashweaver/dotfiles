@@ -1,0 +1,7 @@
+i3
+i3blocks
+nvim
+xclip
+pipenv
+redshift
+maim
