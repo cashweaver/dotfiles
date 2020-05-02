@@ -1,3 +1,4 @@
+google-chrome
 i3
 i3blocks
 maim
