@@ -22,7 +22,7 @@ fi
 if [[ -z $monitor_crtc_number ]]; then
   # Change the brightness of all monitors
 
-  brightest_brightness=$(<brightest_brightness.txt)
+  brightest_brightness=$(<"${DIR}/brightest_brightness.txt")
   if [[ $1 == "up" ]]; then
     new_brightness=$(python3 -c "from decimal import Decimal; print(max(min(Decimal(${brightest_brightness}+${brightness_step}), 1), 0.1))")
   else
@@ -30,16 +30,16 @@ if [[ -z $monitor_crtc_number ]]; then
   fi
 
   # Update all stored brightnesses
-  echo $new_brightness > brightest_brightness.txt
-  echo $new_brightness > north_monitor_brightness.txt
-  echo $new_brightness > south_monitor_brightness.txt
-  echo $new_brightness > west_monitor_brightness.txt
+  echo $new_brightness > "${DIR}/brightest_brightness.txt"
+  echo $new_brightness > "${DIR}/north_monitor_brightness.txt"
+  echo $new_brightness > "${DIR}/south_monitor_brightness.txt"
+  echo $new_brightness > "${DIR}/west_monitor_brightness.txt"
 
-  redshift -O $temperature -b $new_brightness
+  redshift -P -O $temperature -b $new_brightness
 else
 
   # Change the brightness of the specified monitor
-  current_brightness=$(<"${2}_monitor_brightness.txt")
+  current_brightness=$(<"${DIR}/${2}_monitor_brightness.txt")
   if [[ $1 == "up" ]]; then
     new_brightness=$(python3 -c "from decimal import Decimal; print(max(min(Decimal(${current_brightness}+${brightness_step}), 1), 0.1))")
   else
@@ -47,13 +47,13 @@ else
   fi
 
   # Update brightness for this monitor
-  echo $new_brightness > "${2}_monitor_brightness.txt"
+  echo $new_brightness > "${DIR}/${2}_monitor_brightness.txt"
 
   # Update the brightest brightness if necessary
-  brightest_brightness=$(<brightest_brightness.txt)
+  brightest_brightness=$(<"${DIR}/brightest_brightness.txt")
   if [[ $new_brightness > $brightest_brightness ]]; then
-    echo $new_brightness > brightest_brightness.txt
+    echo $new_brightness > "${DIR}/brightest_brightness.txt"
   fi
 
-  redshift -O $temperature -b $new_brightness -m randr:crtc=$monitor_crtc_number
+  redshift -P -O $temperature -b $new_brightness -m randr:crtc=$monitor_crtc_number
 fi
