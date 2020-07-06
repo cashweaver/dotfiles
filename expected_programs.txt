@@ -5,6 +5,7 @@ maim
 nvim
 pipenv
 redshift
+rofi
 rxvt-unicode
 unzip
 xclip
