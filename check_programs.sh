@@ -19,6 +19,8 @@ if [[ "${#missing_programs[@]}" != "0" ]]; then
   for missing_program in "${missing_programs[@]}"; do
     echo "${missing_program}"
   done
+  echo ""
+  echo "Try this: sudo apt install ${missing_programs[*]}"
 else
   echo "Found all programs."
 fi
