@@ -8,6 +8,13 @@
 # System/Super/Win/Meta
 set $mod Mod4 
 
+#System/Super/Win/Meta
+#set $mod Mod4
+
+set $monitor_north DP-1
+set $monitor_south DP-2
+set $monitor_west DP-3
+
 ################################################################################
 #         Look and Feel
 ################################################################################
@@ -120,6 +127,18 @@ bindsym $mod+Shift+8 move container to workspace 8
 bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
+# assign workspaces to monitors 
+workspace 1 output $monitor_south
+workspace 2 output $monitor_south
+workspace 3 output $monitor_south
+workspace 4 output $monitor_south
+workspace 5 output $monitor_north
+workspace 6 output $monitor_north
+workspace 7 output $monitor_north
+workspace 8 output $monitor_north
+workspace 9 output $monitor_west
+workspace 0 output $monitor_west
+
 ################################################################################
 #         Status Bar
 ################################################################################
@@ -145,6 +164,7 @@ exec --no-startup-id redshift -O 3000
 
 set $interval 10
 
+# Resize windows
 mode "resize" {
   bindsym h resize shrink width $interval px  or $interval ppt
   bindsym j resize grow height $interval px  or $interval ppt
@@ -162,6 +182,7 @@ mode "resize" {
 }
 bindsym $mod+r mode "resize"
 
+# i3lock; logout, shutdown, etc
 set $Locker i3lock --no-unlock-indicator --image=/home/cashweaver/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
 set $mode_system System: (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
 mode "$mode_system" {
@@ -180,7 +201,7 @@ bindsym $mod+Delete mode "$mode_system"
 
 set $mode_brightness Brightness: (l/L) Left ↑/↓, (c/C) Center ↑/↓, (r/R) Right ↑/↓, (↑/↓) All ↑/↓
 mode "$mode_brightness" {
-  set $change_brightness "/usr/local/google/home/cashweaver/.scripts/brightness/change_brightness.sh"
+  set $change_brightness "~/.scripts/brightness/change_brightness.sh"
 
   # all monitors
   bindsym Down exec --no-startup-id bash $change_brightness "down"
@@ -194,22 +215,27 @@ mode "$mode_brightness" {
   bindsym c exec --no-startup-id bash $change_brightness "down" "center"
   bindsym Shift+c exec --no-startup-id bash $change_brightness "up" "center"
 
+  # east monitor
+  bindsym e exec --no-startup-id bash $change_brightness "down" "east"
+  bindsym Shift+e exec --no-startup-id bash $change_brightness "up" "east"
+
   # west monitor
   bindsym r exec --no-startup-id bash $change_brightness "down" "right"
   bindsym Shift+r exec --no-startup-id bash $change_brightness "up" "right"
 
- # back to normal: Enter or Escape
+  # back to normal: Enter or Escape
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
 bindsym $mod+b mode "$mode_brightness"
 
+# Screenshots
 set $mode_screenshot Screenshot: (s) select, (c) select to clipboard
 mode "$mode_screenshot" {
   bindsym s exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select.sh, mode "default"
   bindsym c exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
 
- # back to normal: Enter or Escape
+  # back to normal: Enter or Escape
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
@@ -239,7 +265,37 @@ mode "$mode_volume" {
 }
 bindsym $mod+v mode "$mode_volume"
 
+# Sound
+set $mode_sound Sound: (j) Next, (k) Prev, (s) Stop, (p) Play/Pause, (Up/Down) Volume, (0-9) Volume, (m) mute, (M) unmute
+mode "$mode_sound" {
+  bindsym h exec "playerctl --all-players position 10-"
+  bindsym k exec "playerctl --all-players previous"
+  bindsym j exec "playerctl --all-players next"
+  bindsym l exec "playerctl --all-players position 10+"
 
+  bindsym s exec "playerctl --all-players stop"
+  bindsym p exec "playerctl --all-players play-pause"
+
+  bindsym Down exec "amixer set Master,0 2%-"
+  bindsym Up exec "amixer set Master,0 2%+"
+  bindsym 1 exec "amixer set Master,0 10%"
+  bindsym 2 exec "amixer set Master,0 20%"
+  bindsym 3 exec "amixer set Master,0 30%"
+  bindsym 4 exec "amixer set Master,0 40%"
+  bindsym 5 exec "amixer set Master,0 50%"
+  bindsym 6 exec "amixer set Master,0 60%"
+  bindsym 7 exec "amixer set Master,0 70%"
+  bindsym 8 exec "amixer set Master,0 80%"
+  bindsym 9 exec "amixer set Master,0 90%"
+  bindsym 0 exec "amixer set Master,0 0%"
+  bindsym m exec "amixer set Master,0 mute"
+  bindsym Shift+m exec "amixer set Master,0 unmute"
+
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+s mode "$mode_sound"
 
 ################################################################################
 #         Programs
@@ -251,8 +307,14 @@ bindsym $mod+v mode "$mode_volume"
 for_window [class=".*"] border none
 
 ################################################################################
-#                                 Keybindings                                  #
+#         Keybindings
 ################################################################################
 
 bindsym $mod+Up exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/dock.sh
 bindsym $mod+Down exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/undock.sh
+
+################################################################################
+#         Autolaunch
+################################################################################
+
+#set $scripts_path "/home/cashweaver/.scripts"

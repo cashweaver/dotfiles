@@ -1,0 +1,1123 @@
+#+title: Doom Emacs Configuration for Work
+#+author: Cash Weaver
+#+email: cashweaver@google.com
+
+* Table of Contents :TOC_3:noexport:
+- [[#general][General]]
+  - [[#user-information][User Information]]
+  - [[#paths][Paths]]
+- [[#utility-functions][Utility Functions]]
+  - [[#dates][Dates]]
+  - [[#key-binding][Key Binding]]
+- [[#packages][Packages]]
+  - [[#gnus-alias][=gnus-alias=]]
+    - [[#package][Package]]
+    - [[#config][Config]]
+  - [[#notmuch][=notmuch=]]
+    - [[#config-1][Config]]
+  - [[#org-notmuch][=org-notmuch=]]
+    - [[#config-2][Config]]
+  - [[#mu4e][=mu4e=]]
+    - [[#config-3][Config]]
+  - [[#csearch][=csearch=]]
+    - [[#package-1][Package]]
+    - [[#config-4][Config]]
+  - [[#fig-gofig][=fig= (go/fig)]]
+    - [[#package-2][Package]]
+    - [[#config-5][Config]]
+  - [[#google][=google=]]
+    - [[#package-3][Package]]
+    - [[#config-6][Config]]
+  - [[#google3][=google3=]]
+    - [[#package-4][Package]]
+    - [[#config-7][Config]]
+  - [[#google3-eglot][=google3-eglot=]]
+    - [[#package-5][Package]]
+    - [[#config-8][Config]]
+  - [[#google3-flymake][=google3-flymake=]]
+    - [[#package-6][Package]]
+  - [[#google3-mode][=google3-mode=]]
+    - [[#package-7][Package]]
+    - [[#config-9][Config]]
+  - [[#google3-paths][=google3-paths=]]
+    - [[#package-8][Package]]
+  - [[#google-cc-extras][=google-cc-extras=]]
+    - [[#package-9][Package]]
+    - [[#config-10][Config]]
+  - [[#google-sendgmr][=google-sendgmr=]]
+    - [[#package-10][Package]]
+    - [[#config-11][Config]]
+  - [[#org-buganizer][=org-buganizer=]]
+    - [[#package-11][Package]]
+    - [[#config-12][Config]]
+  - [[#org-super-agenda][=org-super-agenda=]]
+    - [[#package-12][Package]]
+    - [[#config-13][Config]]
+  - [[#org-mode][=org-mode=]]
+    - [[#notes][Notes]]
+    - [[#links][Links]]
+    - [[#key-bindings][Key bindings]]
+    - [[#capture-templates][Capture Templates]]
+    - [[#task-management][Task Management]]
+  - [[#ivy-cs][=ivy-cs=]]
+    - [[#package-13][Package]]
+    - [[#config-14][Config]]
+- [[#keybindings][Keybindings]]
+- [[#file-management-and-navigation][File Management and Navigation]]
+  - [[#projectile][Projectile]]
+    - [[#known-projects][Known Projects]]
+- [[#footnotes][Footnotes]]
+
+* General
+
+** User Information
+
+#+begin_src emacs-lisp :tangle work-config.el
+(setq
+ user-full-name "Cash Weaver"
+ user-mail-address "cashweaver@google.com")
+#+end_src
+
+** Paths
+
+#+begin_src emacs-lisp :tangle work-config.el
+(setq
+ cashweaver--experimental-dir-path "/google/src/cloud/cashweaver/cashweaver-experimental/google3/experimental/users/cashweaver/"
+ cashweaver--dotfiles-dir-path (concat cashweaver--experimental-dir-path "dotfiles/files/")
+ cashweaver--company-dir-path "/google/src/cloud/cashweaver/cashweaver-company/company/users/cashweaver")
+#+end_src
+
+* Utility Functions
+
+General-purpose functions which are used throughout my config.
+
+** Dates
+
+#+begin_src emacs-lisp :tangle work-config.el
+
+(defun cashweaver-get-date (&optional date-format offset-days)
+  "Return the (offset) date in format."
+  (interactive)
+  (let ((date-format (or date-format "%Y-%m-%d"))
+        (offset-days (or offset-days 0)))
+    (shell-command-to-string
+     (format "echo -n $(date \"+%s\" --date=\"%d days\")" date-format offset-days))))
+
+(defun cashweaver-todays-date ()
+  "Return todays date as YYYY-MM-DD."
+  (cashweaver-get-date
+   ; date-format
+   "%Y-%m-%d"
+   ; offset-days
+   0))
+
+(defun cashweaver-yesterdays-date ()
+  "Return todays date as YYYY-MM-DD."
+  (cashweaver-get-date
+   ; date-format
+   "%Y-%m-%d"
+   ; offset-days
+   -1))
+
+(cashweaver-todays-date)
+#+end_src
+
+** Key Binding
+
+#+begin_src emacs-lisp :tangle work-config.el
+; Reference; https://www.emacswiki.org/emacs/DocumentingKeyBindingToLambda
+(defun evil-lambda-key (mode keymap key def)
+  "Wrap `evil-define-key' to provide documentation."
+  (set 'sym (make-symbol (documentation def)))
+  (fset sym def)
+  (evil-define-key mode keymap key sym))
+#+end_src
+
+* Packages
+** =gnus-alias=
+*** Package
+
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! gnus-alias)
+#+end_src
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! gnus-alias
+  :config
+  (autoload 'gnus-alias-determine-identity "gnus-alias" "" t)
+  (gnus-alias-init)
+  (setq
+   gnus-alias-identity-alist '(("work"
+                                nil ; Refers to
+                                "Cash Weaver <cashweaver@google.com>"
+                                nil; Organization
+                                nil ; Extra headers
+                                nil ; Body
+                                "~/.email_signature"))
+   gnus-alias-default-identity "work"))
+#+end_src
+
+** =notmuch=
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-notmuch--search-thread-has-tag-p (match-tag)
+  "Whether or not the thread has a tag."
+  (interactive)
+  (let ((thread-tags (notmuch-search-get-tags)))
+    (member match-tag thread-tags)))
+
+(defun cashweaver-notmuch-search-toggle-tag (tag)
+  "Toggle the provided tag."
+  (interactive)
+  (if (member tag (notmuch-search-get-tags))
+      (notmuch-search-tag (list (concat "-" tag)))
+    (notmuch-search-tag (list (concat "+" tag)))))
+
+(defun cashweaver-notmuch--search-thread-toggle-tag (key)
+  "Toggle the specified tag(s)."
+  (interactive "k")
+  (let ((tags (assoc key cashweaver-notmuch-tag-alist)))
+    (apply 'notmuch-search-tag (cdr tags))))
+
+(defun cashweaver-notmuch-search-super-archive (&optional beg end)
+  "Super archive the selected thread; based on `notmuch-search-archive-thread'."
+  (interactive (notmuch-interactive-region))
+  (notmuch-search-tag cashweaver-notmuch-super-archive-tags beg end)
+  (when (eq beg end)
+    (notmuch-search-next-thread)))
+
+(defun cashweaver-org-notmuch-capture-follow-up-mail()
+  "Capture mail to org mode."
+  (interactive)
+  (org-store-link nil)
+  (org-capture nil "ef"))
+
+(after! notmuch
+  (setq
+   notmuch-wash-wrap-lines-length 100
+   notmuch-saved-searches '((:name "inbox"
+                             :key "i"
+                             :query "tag:inbox")
+                            (:name "p0"
+                             :key "0"
+                             :query "tag:p0")
+                            (:name "bugs"
+                             :key "b"
+                             :query "tag:Bug tag:inbox")
+                            (:name "bugs (all)"
+                             :key "B"
+                             :query "tag:Bug")
+                            (:name "waiting"
+                             :key "w"
+                             :query "tag:waiting")
+                            (:name "automated"
+                             :key "a"
+                             :query "tag:Automated AND tag:inbox")
+                            (:name "to-read"
+                             :key "r"
+                             :query "tag:Read!")
+                            (:name "sent"
+                             :key "s"
+                             :query "tag:sent")
+                            (:name "drafts"
+                             :key "d"
+                             :query "tag:draft"))
+   +notmuch-home-function (lambda ()
+                            (notmuch-search "tag:inbox"))
+   notmuch-archive-tags '("-inbox"
+                          "-unread")
+  notmuch-search-line-faces '(("p0" . '(:foreground "red"))
+                              ("Bug" . '(:foreground "green"))
+                              ("waiting" . '(:foreground "yellow"))
+                              ("Read!" . '(:foreground "magenta")))
+   ; Superset of `notmuch-archive-tags' for super archiving.
+   cashweaver-notmuch-super-archive-tags (append
+                                          notmuch-archive-tags
+                                          '("-p0"
+                                            "-waiting"
+                                            "-Read!")))
+
+  ; Prevent wrapping at 70 characters in email composition.
+  (add-hook! 'message-mode-hook 'turn-off-auto-fill)
+  (add-hook! 'message-mode-hook 'visual-line-mode)
+
+  ; Reply-all should be the default.
+  (evil-define-key 'normal notmuch-show-mode-map "cr" 'notmuch-show-reply)
+  (evil-define-key 'normal notmuch-show-mode-map "cR" 'notmuch-show-reply-sender)
+
+  ; Easy archive for my most-used tags.
+  (evil-define-key 'normal notmuch-search-mode-map "A" 'notmuch-search-archive-thread)
+  (evil-define-key 'normal notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+  (evil-define-key 'visual notmuch-search-mode-map "a" 'cashweaver-notmuch-search-super-archive)
+
+  ; Unbind "t", and re-bind it to "T", so we can set it up as a prefix.
+  (evil-define-key 'normal notmuch-search-mode-map "t" nil)
+  (evil-define-key 'normal notmuch-search-mode-map "T" 'notmuch-search-filter-by-tag)
+
+  ; Helpers for toggling often-used tags.
+  (evil-lambda-key 'normal notmuch-search-mode-map "t0" '(lambda ()
+                                                          "Toggle p0"
+                                                          (interactive)
+                                                          (cashweaver-notmuch-search-toggle-tag "p0")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tr" '(lambda ()
+                                                          "Toggle Read!"
+                                                          (interactive)
+                                                          (cashweaver-notmuch-search-toggle-tag "Read!")))
+  (evil-lambda-key 'normal notmuch-search-mode-map "tw" '(lambda ()
+                                                          "Toggle waiting"
+                                                          (interactive)
+                                                          (cashweaver-notmuch-search-toggle-tag "waiting"))))
+#+end_src
+
+#+RESULTS:
+| elisp--font-lock-flush-elisp-buffers | evil-update-pending-maps | general-define-key-in-bug-reference-map52 | general-define-key-in-ranger-mode-map115 | general-define-key-in-ranger-mode-map117 | evil-define-key-in-keymap | evil-define-key-in-keymap | evil-define-key-in-keymap | evil-define-key-in-keymap | evil-define-key-in-keymap | evil-define-key-in-keymap |
+
+** =org-notmuch=
+*** Config
+
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! ol-notmuch
+  :recipe (:local-repo "/usr/local/google/home/cashweaver/third_party/org-mode/contrib/lisp"))
+#+end_src
+
+** =mu4e=
+*** Config
+#+begin_src emacs-lisp :tangle work-config.el
+(set-email-account!
+ "Corp"
+ '((mu4e-sent-folder . "/Corp/sent")
+   (mu4e-drafts-folder . "/Corp/drafts")
+   (mu4e-trash-folder . "/Corp/trash")
+   (mu4e-refile-folder . "/Corp/all")
+   (smtpmail-smtp-user . "cashweaver@google.com")
+   (mu4e-compose-signature . (concat
+                              "---\n"
+                              "Cheers,\n"
+                              "Cash Weaver"))
+   (mu4e-headers-skip-duplicates t)
+   (mu4e-get-mail-command . "mbsync --config ~/.config/mbsync/.mbsyncrc --all")
+   (mu4e-update-interval . 300))
+ t)
+#+end_src
+
+** =csearch=
+*** Package
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! csearch
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+*** Config
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! csearch)
+#+end_src
+** =fig= ([[http://go/fig][go/fig]])
+*** Package
+
+We need several packages for Fig to work properly.
+
+#+begin_src emacs-lisp :tangle work-packages.el
+;; Fig
+;;;; Dependencies
+(package! aio)
+(package! bookmark)
+(package! cl-lib)
+(package! code-review
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+(package! dash)
+(package! desktop)
+(package! eshell)
+(package! ediff)
+;;(package! em-dirs)
+(package! google-lint
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+(package! google-platform
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+(package! google-emacs-utilities
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+  ;:built-in 'perfer)
+(package! google-process
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+;(package! gv)
+;;(package! magit-mode)
+;;(package! magit-popup)
+(package! nadvice)
+(package! pcase)
+(package! rx)
+(package! s)
+(package! term)
+(package! with-editor)
+;;;; VC/Fig
+(package! vc-hgcmd)
+(package! vc-defer
+  :recipe (:host github :repo "google/vc-defer"))
+;;;; Fig itself
+(package! fig
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/fig"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! fig)
+#+end_src
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver--fig-altered-files ()
+  "Return a list of altered files."
+  (split-string
+   (shell-command-to-string
+    (concat
+     "parent_id=$(hg parents -r . | grep changeset | sed 's/.*://'); "
+     "hg status --no-status --rev $parent_id | xargs readlink -f | sort | uniq"))))
+
+(defun cashweaver--open-altered-file (filepath)
+  "Return choice from list of altered files in this CL (fig)."
+  (interactive
+   (list
+    (completing-read "File: " (cashweaver--fig-altered-files))))
+  (find-file filepath))
+#+end_src
+** =google=
+*** Package
+
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! google
+  ;:recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+  :built-in 'perfer)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! google)
+#+end_src
+** =google3=
+*** Package
+
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! google3
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! google3)
+#+end_src
+
+** =google3-eglot=
+*** Package
+#+begin_src emacs-lisp :tangle work-packages.el
+; Disable stuff to make google3-eglot work
+(package! eglot :disable t)
+(package! project :disable t)
+(package! jsonrpc :disable t)
+(package! xref :disable t)
+
+(package! google3-eglot
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+
+*** Config
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! google3-eglot
+  :after (google)
+  :config
+  (setq eglot-sync-connect 0)
+  (google3-eglot-setup))
+
+(add-hook! 'after-init-hook :append #'global-company-mode)
+(global-set-key (kbd "<f5>") #'company-complete)
+#+end_src
+
+** =google3-flymake=
+*** Package
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! google3-flymake
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+** =google3-mode=
+*** Package
+
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! google3-mode
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! google3-mode)
+#+end_src
+** =google3-paths=
+*** Package
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! google3-paths
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+** =google-cc-extras=
+*** Package
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! google-cc-extras
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+*** Config
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! google-cc-extras)
+#+end_src
+** =google-sendgmr=
+*** Package
+
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! google-sendgmr
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! google-sendgmr
+  :config
+  (setq
+   send-mail-function #'google-sendgmr-send-it
+   message-send-mail-function #'google-sendgmr-send-it))
+#+end_src
+
+** =org-buganizer=
+
+*** Package
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! org-buganizer
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! org-buganizer)
+#+end_src
+
+**** Helper Methods
+
+#+begin_src emacs-lisp :tangle work-config.el
+;; Reference: /usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs/org-buganizer.el
+(defun cashweaver-buganizer-create-todo-from-bug-after-current (id)
+  "Create a TODO entry from the bug identified by ID.
+
+Insert the TODO entry using ‘org-insert-heading-after-current’."
+  (interactive "*nBug: ")
+  (outline-up-heading 10 t)
+  (org-insert-todo-heading-respect-content)
+  (org-buganizer-insert-property id))
+#+end_src
+
+**** Overrides
+***** =org-buganizer--update-properties-from-bug=
+
+Include
+
+#+begin_src emacs-lisp :tangle work-config.el
+; Override
+; Rewrite title string because opening links through org mode doesn't work as expected
+; through SSH.
+(defun org-buganizer--update-properties-from-bug (bug &optional update-title)
+  "Update the properties of the current entry using data from BUG.
+
+BUG is an instance of ‘google-bugged-bug’.  If UPDATE-TITLE is non-nil then the
+user will be prompted to update the entry title to match the bug."
+  (when bug
+    ;; You'd think that ID couldn't change. And you'd be right. But when
+    ;; bootstrapping the properties for the first time it won't exist.
+    (org-entry-put (point)
+                   (org-buganizer--prop-id)
+                   (google-bugged-bug-id bug))
+    (org-entry-put (point)
+                   (org-buganizer--prop-status)
+                   (google-bugged-bug-status bug))
+    (org-entry-put (point)
+                   (org-buganizer--prop-assignee)
+                   (google-bugged-bug-assignee bug))
+    (org-entry-put (point)
+                   (org-buganizer--prop-component-id)
+                   (google-bugged-bug-component-id bug))
+    ;; TODO(rmirelan): implement
+    ;; (org-entry-put (point)
+    ;;                (org-buganizer--prop-component-path)
+    ;;                (s-join " > "
+    ;;                        (google-buganizer-issue-component_path bug)))
+    (org-entry-put (point)
+                   (org-buganizer--prop-priority)
+                   (google-bugged-bug-priority bug))
+    (org-entry-put (point)
+                   (org-buganizer--prop-title)
+                   (google-bugged-bug-summary bug))
+    (org-entry-put (point)
+                   (org-buganizer--prop-type)
+                   (google-bugged-bug-type bug))
+
+    (when update-title
+      (org-buganizer--update-title bug))))
+
+#+end_src
+
+***** =org-buganizer--propose-title=
+
+#+begin_src emacs-lisp :tangle work-config.el
+; Override
+; Rewrite title string because opening links through org mode doesn't work as expected
+; through SSH.
+(defun org-buganizer--propose-title (id title)
+  "Return a proposed title for the current entry based on ID and TITLE."
+    (format "[[http://b/%s][%s]] (%s) [/] :bug:" id title (concat "b/" id)))
+#+end_src
+
+#+RESULTS:
+: org-buganizer--propose-title
+
+***** =org-buganizer--update-title=
+
+Always update the bug title.
+
+#+begin_src emacs-lisp :tangle work-config.el
+; Override
+; Always update title.
+(defun org-buganizer--update-title (bug)
+    "Compare BUG summary to entry heading, prompting to re-write if different.
+
+BUG is an instance of ‘google-bugged-bug’."
+    (let ((cur-title (org-buganizer--current-title))
+          (new-title (org-buganizer--propose-title-from-bug bug)))
+      (when (not (string= cur-title new-title))
+        (display-buffer (current-buffer) '(display-buffer-same-window))
+        (recenter nil)
+        (org-edit-headline new-title))))
+#+end_src
+
+** =org-super-agenda=
+
+*** Package
+
+#+begin_src emacs-lisp :tangle work-packages.el
+(package! org-super-agenda)
+#+end_src
+
+*** Config
+
+#+begin_src emacs-lisp :tangle work-config.el
+(use-package! org-agenda)
+(use-package! evil)
+(use-package! evil-org-agenda)
+(use-package! org-super-agenda
+  :demand t
+  :after
+  (:all
+   org-agenda
+   evil
+   ;evil-org
+   evil-org-agenda)
+  :hook
+  ((org-agenda-mode . org-super-agenda-mode))
+  :config
+  (setq
+   org-super-agenda-header-map evil-org-agenda-mode-map
+   org-agenda-custom-commands '(("c" "Super view"
+                                 ((agenda "" ((org-agenda-overriding-header "")
+                                              (org-super-agenda-groups
+                                               '((:name "Schedule"
+                                                  :time-grid t
+                                                  :order 0)
+                                                 (:name "Changelists: Follow Up"
+                                                  :tag "cl_follow_up")
+                                                 (:name "Changelists: Resolve Comments"
+                                                  :tag "cl_resolve")
+                                                 (:name "Changelists: Review"
+                                                  :tag "cl_review")
+                                                 (:name "Changelists: Submit"
+                                                  :tag "cl_submit")
+                                                 (; Group all bug TODOs
+                                                  :auto-map
+                                                  (lambda (item)
+                                                    (-when-let*
+                                                        ((marker (or (get-text-property 0 'org-marker item)
+                                                                     (get-text-property 0 'org-hd-marker)))
+                                                         (bug-id (org-entry-get marker "buganizer_id" t))
+                                                         (bug-title (org-entry-get marker "buganizer_title" t)))
+                                                      (format "[[bug:%s][%s]] (b/%s)" bug-id bug-title bug-id))
+                                                    ))
+                                                  (; Toss all other todos
+                                                   :discard
+                                                   (:todo t))))))
+                                 (alltodo "" ((org-agenda-overriding-header "")
+                                              (org-super-agenda-groups
+                                               '((; Automatically named "Log"
+                                                  :log t)
+                                                 (; Toss all bugs with a deadline as they are included in the agenda section.
+                                                  :discard
+                                                  (:and
+                                                   (:tag ("bug")
+                                                    :deadline t)))
+                                                 (; Toss all scheduled bugs as they are included in the agenda section.
+                                                  :discard
+                                                  (:and
+                                                   (:tag ("bug")
+                                                    :scheduled t)))
+                                                 (; Don't bother listing PROJ items. They are used to group actionable TODOs.
+                                                  :discard
+                                                  (:todo "PROJ"))
+                                                 (; Toss all the daily tasks if they're not due today.
+                                                  :discard
+                                                  (:tag ("daily")))
+                                                 (:discard
+                                                  (:tag "cl_submit"))
+                                                 (:discard
+                                                  (:tag "cl_follow_up"))
+                                                 (:discard
+                                                  (:tag "cl_resolve"))
+                                                 (:discard
+                                                  (:tag "cl_review"))
+                                                 (:name "Overdue"
+                                                  :deadline past)
+                                                 (:name "Scheduled earlier"
+                                                  :scheduled past)
+                                                 (:name "In Progress"
+                                                  :todo "INPROGRESS")
+                                                (:name "Blocked"
+                                                  :todo "BLOCKED")
+                                                 (:name "Upcoming"
+                                                  :scheduled future)
+                                                 (:name "Due Soon"
+                                                  :deadline future)
+                                                 ))))))))
+  (org-super-agenda-mode))
+#+end_src
+
+#+RESULTS:
+| org-super-agenda-mode | +org-habit-resize-graph-h | evil-org-agenda-mode |
+
+** =org-mode=
+*** Notes
+
+I use an =org-mode= file, generated daily, to help keep myself focused and document my work.
+
+All of these notes are stored in one directory.
+
+#+begin_src emacs-lisp :tangle work-config.el
+(setq
+ cashweaver-notes--dir-path "/google/src/cloud/cashweaver/cashweaver-notes/google3/experimental/users/cashweaver/notes/")
+#+end_src
+
+All files for populating my Agenda are stored within my =notes= directory.
+
+#+begin_src emacs-lisp :tangle work-config.el
+(after! org
+  (setq
+   org-agenda-files `(,cashweaver-notes--dir-path)))
+#+end_src
+
+
+My primary file is =devlog.org=. I also use =todos.org= for general todos and =bugs.org= for todos related to bugs.
+
+#+begin_src emacs-lisp :tangle work-config.el
+(setq
+ cashweaver-notes--devlog-file-path (concat cashweaver-notes--dir-path "devlog.org")
+ cashweaver-notes--todos-file-path (concat cashweaver-notes--dir-path "todos.org")
+ cashweaver-notes--bugs-file-path (concat cashweaver-notes--dir-path "bugs.org"))
+
+;TODO Figure out how to add a new header with today's date (YYYY-MM-DD) if it doesn't already exist.
+(defun cashweaver-notes-open-devlog ()
+  "Open my development log."
+  (interactive)
+  (let ((devlog-buffer
+         (find-file-other-window cashweaver-notes--devlog-file-path))
+        (date (cashweaver-todays-date)))
+    (with-current-buffer devlog-buffer
+      (goto-char (point-min))
+      (unless (search-forward date nil t)
+          (progn
+            (goto-char (point-max))
+            (org-insert-heading-respect-content)
+            (insert date)))
+      (goto-char (point-min)))
+    (pop-to-buffer devlog-buffer)))
+
+;TODO Figure out how to add a new header with today's date (YYYY-MM-DD) if it doesn't already exist.
+(defun cashweaver-notes-open-bugs ()
+  "Open my development log."
+  (interactive)
+  (let ((bugs-buffer
+         (find-file-other-window cashweaver-notes--bugs-file-path)))
+    (with-current-buffer bugs-buffer
+      (goto-char (point-max)))
+    (pop-to-buffer bugs-buffer)))
+#+end_src
+
+*** Links
+
+#+begin_src emacs-lisp :tangle work-config.el
+(after! org
+  (org-add-link-type "cl" #'cashweaver-changelist--make-link)
+  (org-add-link-type "google-doc" #'cashweaver-google-doc--make-link)
+  (org-add-link-type "bug" #'cashweaver-buganizer--make-link))
+#+end_src
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-links--make-description (link description)
+  "Return a description based on the link type.
+See =org-link-make-description-function."
+  (let* ((split (split-string link ":"))
+      (link-type (nth 0 split))
+      (target (nth 1 split)))
+    (cond
+     ((equal link-type "bug") (cashweaver-buganizer--get-title target))
+     ((equal link-type "cl") (cashweaver-changelist--get-first-desc-line target)))))
+    ;(format "link: %s; description: %s" link description)))
+
+(setf
+ org-link-make-description-function #'cashweaver-links--make-description)
+#+end_src
+
+**** Changelist (Critique; CLs)
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-changelist--get-first-desc-line (id)
+  "Return the first line of the Changelist's description."
+  (shell-command-to-string
+   (format "/usr/bin/clsearch --full_desc 'is:all cl:%s' | head -n3 | tail -n1 | tr -d '\n'" id)))
+
+(defun cashweaver-changelist--get-first-desc-line (id)
+  "Return the first line of the Changelist's description."
+  (shell-command-to-string
+   (format "/usr/bin/clsearch --full_desc 'is:all cl:%s' | head -n3 | tail -n1 | tr -d '\n'" id)))
+
+(defun cashweaver-changelist--make-link (id)
+  "Creates a link to the provided Changelist"
+  (browse-url (concat "http://cl/" id)))
+#+end_src
+
+**** Google Docs
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-google-docs--make-link (id)
+  "Creates a link to the provided Changelist"
+  (browse-url (concat "http://docs.google.com/document/d/" id)))
+#+end_src
+
+**** Buganizer
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-buganizer--get-title (id)
+  "Return the Bug's title."
+  (shell-command-to-string
+   (format "/usr/bin/bugged search --columns=summary id:%s | tail -n-1 | tr -d '\n'" id)))
+
+(defun cashweaver-buganizer--make-link (id)
+  "Creates a link to the provided Bug."
+  (browse-url (concat "http://b/" id)))
+#+end_src
+
+*** Key bindings
+
+#+begin_src emacs-lisp :tangle work-config.el
+(after! org
+  (map!
+   :map org-mode-map
+   :localleader
+   (:prefix ("B" . "buganizer")
+    :desc "create todo from bug" :n "c" #'org-buganizer-create-todo-from-bug
+    :desc "create todos from query" :n "q" #'org-buganizer-create-todos-from-query
+    :desc "update properties" :n "u" #'org-buganizer-update-properties
+    :desc "update all properties" :n "U" #'org-buganizer-update-properties
+    :desc "verify state" :n "v" #'org-buganizer-verify-state
+    :desc "verify state all" :n "V" #'org-buganizer-verify-all)))
+#+end_src
+
+*** Capture Templates
+
+#+begin_src emacs-lisp
+(defun cashweaver-notes--search-bugs ()
+  "work in progress"
+  (let ((bugs-buffer
+         (find-file-other-window cashweaver-notes--bugs-file-path)))
+    (with-current-buffer bugs-buffer
+      (goto-char (point-min))
+      (unless
+          (search-forward-regexp "^\\*.*bug:\\(\d+\\)" nil t)
+        ))
+    (pop-to-buffer bugs-buffer)))
+#+end_src
+
+#+begin_src emacs-lisp :tangle work-config.el
+(setq org-capture-templates
+      (doct '(("Bug todo"
+               :keys "b"
+               :file (lambda () (concat cashweaver-notes--dir-path "bugs.org"))
+               :template ("* TODO %?"
+                          ":PROPERTIES:"
+                          ":Created: %U"
+                          ":END:"))
+              ("Changelist"
+               :keys "c"
+               :cl-link (lambda ()
+                          (let* ((id (read-number "Changelist ID: "))
+                                 (first-desc-line (cashweaver-changelist--get-first-desc-line id)))
+                            (format "[[cl:%d][%s]]" id first-desc-line)))
+               :file (lambda () (concat cashweaver-notes--dir-path "todos.org"))
+               :children (("Changelist"
+                           :keys "c"
+                           :template ("* TODO %{cl-link}: %?  :cl:"
+                                      ":PROPERTIES:"
+                                      ":Created: %U"
+                                      ":agenda-group: changelist"
+                                      ":END:"))
+                          ("Follow up in 3 days"
+                           :keys "3"
+                           :three-days-from-today (lambda ()
+                                                    (cashweaver-get-date "%Y-%m-%d %a" 3))
+                           :template ("* TODO %{cl-link}: Follow up %?  :cl:cl_follow_up:"
+                                      "DEADLINE: <%{three-days-from-today}>"
+                                      ":PROPERTIES:"
+                                      ":Created: %U"
+                                      ":agenda-group: changelist"
+                                      ":END:"))))
+              (:group "Todos"
+               :file (lambda () (concat cashweaver-notes--dir-path "todos.org"))
+               :children (("Todo"
+                           :keys "t"
+                           :template ("* TODO %?"
+                                      ":PROPERTIES:"
+                                      ":Created: %U"
+                                      ":END:"))))
+              ("Email"
+               :keys "e"
+               :file (lambda () (concat cashweaver-notes--dir-path "todos.org"))
+               :children (("Follow up"
+                           :keys "f"
+                           :template ("* TODO Follow up: [[notmuch:id:%:message-id][%:subject (from: %(replace-regexp-in-string \"@google.com$\" \"@\" \"%:from\"), to: %(replace-regexp-in-string \"@google.com$\" \"@\" \"%:to\"))]] :email:email_follow_up:"
+                                      ":PROPERTIES:"
+                                      ":Created: %U"
+                                      ":END:")))))))
+#+end_src
+
+#+RESULTS:
+| b | Bug todo | entry | (file (lambda nil (concat cashweaver-notes--dir-path bugs.org))) | * TODO %? |
+
+*** Task Management
+
+**** Changelists
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-changelists--create-todo-for-cl (id description &optional tags deadline priority)
+  "Create a new TODO item for the provided ID. Deadline defaults to today."
+  (let ((deadline-date (or deadline (cashweaver-todays-date)))
+        (tags (or tags ":cl:"))
+        (todos-buffer
+         (find-file-other-window cashweaver-notes--todos-file-path))
+        (first-desc-line (cashweaver-changelist--get-first-desc-line id)))
+    (with-current-buffer todos-buffer
+      (goto-char (point-max))
+      (org-insert-todo-heading-respect-content)
+      (insert
+       (format "[[cl:%d][%s]]: %s %s" id first-desc-line description tags))
+      (org-deadline nil deadline-date)
+      (if priority
+          (org-priority priority))
+      (save-buffer))))
+
+(defun cashweaver-changelists--create-todo-for-cls (ids description &optional tags deadline priority)
+  "Loop over IDS and invoke cashweaver-changelists--create-todo-for-cl."
+  (dolist (id ids)
+    (cashweaver-changelists--create-todo-for-cl id description tags deadline priority)))
+#+end_src
+
+#+RESULTS:
+: cashweaver-changelists--create-todo-for-cls
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-clsearch--get-list-of-ids (query)
+  "Perform a clsearch and return a list of ids."
+  (loop for id in (split-string
+                   (shell-command-to-string
+                    (format
+                     "clsearch '%s' | sed 's|http://cl/||' | sed 's/ on.*//'" query)))
+        collect (string-to-number id)))
+
+(defun cashweaver-changelists--get-unresolved-cl-ids ()
+  "Return a list of ids of unresolved CLs authored by cashweaver@."
+  (cashweaver-clsearch--get-list-of-ids "a:cashweaver -is:submitted is:unresolved"))
+
+(defun cashweaver-changelists--get-lgtm-cl-ids ()
+  "Return a list of ids of LGTMedd CLs authored by cashweaver@."
+  (cashweaver-clsearch--get-list-of-ids "a:cashweaver -is:submitted is:lgtm"))
+
+(defun cashweaver-changelists--get-reviewer-cl-ids ()
+  "Return a list of ids of CLs for cashweaver@ to review."
+  (cashweaver-clsearch--get-list-of-ids "reviewer:cashweaver -is:submitted attn:cashweaver"))
+#+end_src
+
+#+RESULTS:
+: cashweaver-changelists--get-reviewer-cl-ids
+
+#+begin_src emacs-lisp :tangle work-config.el
+(defun cashweaver-changelist-create-todos ()
+  "Create todos for unresolved and lgtm CLs assigned to cashweaver@."
+  (interactive)
+  (cashweaver-changelists--create-todo-for-cls
+   ; ids
+   (cashweaver-changelists--get-unresolved-cl-ids)
+   ; description
+   "Resolve comments"
+   ; tags
+   ":cl:cl_resolve:"
+   ; deadline
+   nil
+   ; priority
+   ?B
+  )
+  (cashweaver-changelists--create-todo-for-cls
+   ; ids
+   (cashweaver-changelists--get-reviewer-cl-ids)
+   ; description
+   "Review"
+   ; tags
+   ":cl:cl_review:"
+   ; deadline
+   nil
+   ; priority
+   ?B
+  )
+  (cashweaver-changelists--create-todo-for-cls
+   ; ids
+   (cashweaver-changelists--get-lgtm-cl-ids)
+   ; description
+   "Submit"
+   ; tags
+   ":cl:cl_submit:"
+   ; deadline
+   nil
+   ; priority
+   ?A
+   ))
+#+end_src
+
+#+RESULTS:
+: cashweaver-changelist-create-todos
+
+** =ivy-cs=
+*** Package
+#+begin_src emacs-lisp :tangle packages.el
+(package! ivy-cs
+  :recipe (:local-repo "/usr/share/emacs/site-lisp/emacs-google-config/devtools/editors/emacs"))
+#+end_src
+*** Config
+#+begin_src emacs-lisp :tangle config.el
+(use-package! ivy-cs)
+#+end_src
+* Keybindings
+
+#+begin_src emacs-lisp :tangle config.el
+;; Keep in alphabetical order.
+(map!
+ (:leader
+  (:prefix ("B" . "Bugs")
+   :desc "Edit current bug" :n "e" #'cashweaver-edit-current-citc-bug
+   :desc "Show current bug" :n "s" #'cashweaver-show-current-citc-bug)
+  ;; f
+  :desc "Altered files" :n "f a" #'cashweaver--open-altered-file
+  :desc "Find from g3" :n "f g" #'cashweaver--find-file-from-g3
+  :desc "Find from notes" :n "f n" #'cashweaver-notes--find-file
+  :desc "Rotate file new window" :n "f ." #'google-rotate-among-files
+  ;; n
+  :desc "Store email link" :n "n L" #'org-notmuch-store-link
+  ;; o
+  (:prefix ("o" . "open")
+   (:prefix ("n" . "notes")
+    :desc "devlog" :n "d" #'cashweaver-notes-open-devlog
+    :desc "bugs" :n "b" #'cashweaver-notes-open-bugs))
+  ;; s
+  :desc "csearch" :n "s c" #'csearch
+  (:prefix ("v" . "vc")
+   :desc "fig amend" :n "a" #'fig-amend
+   :desc "fig commit" :n "c" #'fig-commit
+   :desc "fig fix" :n "f" #'fig-fix
+   :desc "hgd" :n "h" #'cashweaver--change-citc
+   :desc "fig status" :n "s" #'fig-status
+   :desc "fig sync" :n "S" #'fig-sync)))
+#+end_src
+
+* File Management and Navigation
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver--find-file-from-g3 ()
+  "Invoke find-file from the g3 directory for this CITC."
+  (interactive)
+  ;(cd (replace-regexp-in-string "google3.*" "google3/" default-directory))
+  ;(call-interactively 'dired))
+  (counsel-find-file
+   nil
+   (cd (replace-regexp-in-string "google3.*" "google3/" default-directory))))
+
+(defun cashweaver-notes--find-file ()
+  "Invoke find-file from the g3 directory for this CITC."
+  (interactive)
+  ;(cd cashweaver-notes--dir-path)
+  ;(call-interactively 'dired))
+  (counsel-find-file nil cashweaver-notes--dir-path))
+#+end_src
+
+** Projectile
+
+Start with a blank slate.
+
+#+begin_src emacs-lisp :tangle config.el
+(projectile-clear-known-projects)
+#+end_src
+
+Google-specific tweaks.
+
+#+begin_src emacs-lisp :tangle config.el
+;; reference: //experimental/users/rodriguesandre/emacs/andre-google-projectile.el
+
+;; Make sure projectile find some project before hitting /google/src/cloud
+(add-to-list 'projectile-project-root-files "OWNERS")
+
+(projectile-register-project-type 'blaze '("BUILD"))
+
+(defun google-find-in-existing-projects (dir)
+  "Search DIR in projectile's known projects, returning it, if found."
+  (cl-some
+   (lambda (project) (and (string-prefix-p project dir) project))
+   projectile-known-projects
+   ))
+
+(add-to-list 'projectile-project-root-files-functions 'google-find-in-existing-projects)
+#+end_src
+
+*** Known Projects
+
+Define known projects to include my notes, experimental directory, dotfiles, and all CITCs
+
+#+begin_src emacs-lisp :tangle config.el
+#+end_src
+
+Also include all of my CITCs.
+
+#+begin_src emacs-lisp :tangle config.el
+(defun cashweaver--append-common-paths-to-citc (citc)
+  "Return a list of paths, based on the provided path, to common  "
+  `(,(concat (cashweaver--g3-path-from-citc-name citc) "java/com/google/caribou/")
+    ,(concat (cashweaver--g3-path-from-citc-name citc) "javatests/com/google/caribou/")))
+#+end_src
+
+#+begin_src emacs-lisp :tangle config.el
+(setq projectile-known-projects
+      (flatten-tree `(,cashweaver-notes--dir-path
+                      ,cashweaver--experimental-dir-path
+                      ,cashweaver--dotfiles-dir-path
+                      ,cashweaver--company-dir-path
+                      ,(mapcar
+                       #'cashweaver--append-common-paths-to-citc
+                       (cashweaver--get-bug-citc-names)))))
+#+end_src
+
+* Footnotes
+
+[fn:1] 1. [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][Diego Zamboni]]

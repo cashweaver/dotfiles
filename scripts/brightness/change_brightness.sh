@@ -10,6 +10,7 @@ TEMPERATURE=3000
 
 source "${DIR}/../config/monitors.sh"
 source "${DIR}/config.sh"
+source "${DIR}/set_brightness_fn.sh"
 
 function set_brightness() {
   local monitor_name="${1}"
