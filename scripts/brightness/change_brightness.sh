@@ -5,55 +5,118 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+BRIGHTNESS_STEP=0.1
+TEMPERATURE=3000
+
 source "${DIR}/../config/monitors.sh"
 source "${DIR}/config.sh"
 
-monitor_crtc_number=""
-if [[ ! -z $2 ]]; then
-  if [[ $2 == "north" ]]; then
-    monitor_crtc_number=$north_monitor_crtc_number
-  elif [[ $2 == "south" ]]; then
-    monitor_crtc_number=$south_monitor_crtc_number
-  elif [[ $2 == "west" ]]; then
-    monitor_crtc_number=$west_monitor_crtc_number
+function set_brightness() {
+  local monitor_name="${1}"
+  local monitor_crtc_number="$(determine_crtc_number $monitor_name)"
+  local brightness="$(clamp_brightness $2)"
+  local temperature="${3:-$TEMPERATURE}"
+
+  redshift -P -O $temperature -b $brightness -m randr:crtc=$monitor_crtc_number
+
+  update_stored_brightness "${monitor_name}" "${brightness}"
+}
+
+function update_stored_brightness() {
+  local monitor_name="$1"
+  local brightness="$2"
+
+  echo "${brightness}" > "${DIR}/${monitor_name}_monitor_brightness.txt"
+}
+
+function get_stored_brightness() {
+  local monitor_name="$1"
+
+  cat "${DIR}/${monitor_name}_monitor_brightness.txt"
+}
+
+function clamp_brightness() {
+  echo $(python3 -c "from decimal import Decimal; print(min(max(Decimal(${1}), 0.1), 1.0))")
+}
+
+function step_up_brightness() {
+  local monitor_name="${1}"
+  local current_brightness="$(get_stored_brightness $monitor_name)"
+  local brightness="$(python3 -c "print($current_brightness+$BRIGHTNESS_STEP)")"
+  local monitor_crtc_number="$(determine_crtc_number $monitor_name)"
+  local temperature="${2:-$TEMPERATURE}"
+
+  set_brightness "${monitor_name}" "${brightness}" "${temperature}"
+}
+
+function step_down_brightness() {
+  local monitor_name="${1}"
+  local current_brightness="$(get_stored_brightness $monitor_name)"
+  local brightness="$(python3 -c "print($current_brightness-$BRIGHTNESS_STEP)")"
+  local monitor_crtc_number="$(determine_crtc_number $monitor_name)"
+  local temperature="${2:-$TEMPERATURE}"
+
+  set_brightness "${monitor_name}" "${brightness}" "${temperature}"
+}
+
+function determine_crtc_number() {
+  if [[ "$1" == "left" ]]; then
+    echo $left_monitor_crtc_number
+  elif [[ "$1" == "center" ]]; then
+    echo $center_monitor_crtc_number
+  elif [[ "$1" == "right" ]]; then
+    echo $right_monitor_crtc_number
+  else
+    echo ""
   fi
+}
+
+function create_brightness_files_if_not_exist() {
+  local files=(
+    "${DIR}/left_monitor_brightness.txt"
+    "${DIR}/center_monitor_brightness.txt"
+    "${DIR}/right_monitor_brightness.txt"
+  )
+
+  for f in "${files[@]}"; do
+    if [[ ! -f "${file}" ]]; then
+      echo "1.0" > "${file}"
+    fi
+  done
+}
+ 
+if [[ "$#" < 1 || "$#" > 3 ]]; then
+  echo "Wrong number of arguments."
+  echo "Expected: up|down (left|center|right)"
+  exit 1
 fi
 
+brightness_direction="${1}"
+monitor_name="${2}"
+
+monitor_crtc_number="$(determine_crtc_number $monitor_name)"
 if [[ -z $monitor_crtc_number ]]; then
   # Change the brightness of all monitors
 
-  brightest_brightness=$(<"${DIR}/brightest_brightness.txt")
-  if [[ $1 == "up" ]]; then
-    new_brightness=$(python3 -c "from decimal import Decimal; print(max(min(Decimal(${brightest_brightness}+${brightness_step}), 1), 0.1))")
-  else
-    new_brightness=$(python3 -c "from decimal import Decimal; print(max(min(Decimal(${brightest_brightness}-${brightness_step}), 1), 0.1))")
+  if [[ "${brightness_direction}" == "up" ]]; then
+    step_up_brightness "left"
+    step_up_brightness "center"
+    step_up_brightness "right"
   fi
 
-  # Update all stored brightnesses
-  echo $new_brightness > "${DIR}/brightest_brightness.txt"
-  echo $new_brightness > "${DIR}/north_monitor_brightness.txt"
-  echo $new_brightness > "${DIR}/south_monitor_brightness.txt"
-  echo $new_brightness > "${DIR}/west_monitor_brightness.txt"
-
-  redshift -P -O $temperature -b $new_brightness
-else
-
-  # Change the brightness of the specified monitor
-  current_brightness=$(<"${DIR}/${2}_monitor_brightness.txt")
-  if [[ $1 == "up" ]]; then
-    new_brightness=$(python3 -c "from decimal import Decimal; print(max(min(Decimal(${current_brightness}+${brightness_step}), 1), 0.1))")
-  else
-    new_brightness=$(python3 -c "from decimal import Decimal; print(max(min(Decimal(${current_brightness}-${brightness_step}), 1), 0.1))")
+  if [[ "${brightness_direction}" == "down" ]]; then
+    step_down_brightness "left"
+    step_down_brightness "center"
+    step_down_brightness "right"
   fi
 
-  # Update brightness for this monitor
-  echo $new_brightness > "${DIR}/${2}_monitor_brightness.txt"
+  exit 0
+fi
 
-  # Update the brightest brightness if necessary
-  brightest_brightness=$(<"${DIR}/brightest_brightness.txt")
-  if [[ $new_brightness > $brightest_brightness ]]; then
-    echo $new_brightness > "${DIR}/brightest_brightness.txt"
-  fi
+if [[ "${brightness_direction}" == "up" ]]; then
+  step_up_brightness "${monitor_name}"
+fi
 
-  redshift -P -O $temperature -b $new_brightness -m randr:crtc=$monitor_crtc_number
+if [[ "${brightness_direction}" == "down" ]]; then
+  step_down_brightness "${monitor_name}"
 fi

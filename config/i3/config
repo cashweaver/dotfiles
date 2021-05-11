@@ -2,8 +2,11 @@
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
-# Use alt as mod key
-set $mod Mod1
+# Use alt as mod key (run `$ xmodmap` to see possible values
+# alt
+#set $mod Mod1 # alt
+# System/Super/Win/Meta
+set $mod Mod4 
 
 ################################################################################
 #         Look and Feel
@@ -23,16 +26,17 @@ bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
 
 # start a terminal
-bindsym $mod+Return exec i3-sensible-terminal
+bindsym $mod+Return exec rxvt-unicode
+bindsym $mod+Shift+Return exec rxvt-unicode -e sh -c "ssh cashweaver.sbo.corp.google.com"
 
 # kill focused window
 bindsym $mod+Shift+q kill
 
 # start dmenu (a program launcher)
-bindsym $mod+d exec dmenu_run
+bindsym $mod+d exec rofi -combi-modi drun#ssh -font "Iosevka Term SS09 10" -show combi
 
 ################################################################################
-#         Movement and Focus                                                  
+#         Movement and Focus
 ################################################################################
 
 # change focus
@@ -42,10 +46,10 @@ bindsym $mod+k focus up
 bindsym $mod+l focus right
 
 # alternatively, you can use the cursor keys:
-bindsym $mod+Left focus left
-bindsym $mod+Down focus down
-bindsym $mod+Up focus up
-bindsym $mod+Right focus right
+#bindsym $mod+Left focus left
+#bindsym $mod+Down focus down
+#bindsym $mod+Up focus up
+#bindsym $mod+Right focus right
 
 # move focused window
 bindsym $mod+Shift+h move left
@@ -54,16 +58,16 @@ bindsym $mod+Shift+k move up
 bindsym $mod+Shift+l move right
 
 # alternatively, you can use the cursor keys:
-bindsym $mod+Shift+Left move left
-bindsym $mod+Shift+Down move down
-bindsym $mod+Shift+Up move up
-bindsym $mod+Shift+Right move right
+#bindsym $mod+Shift+Left move left
+#bindsym $mod+Shift+Down move down
+#bindsym $mod+Shift+Up move up
+#bindsym $mod+Shift+Right move right
 
 # split in horizontal orientation
 bindsym $mod+semicolon split h
 
 # split in vertical orientation
-bindsym $mod+v split v
+bindsym $mod+Shift+v split v
 
 # enter fullscreen mode for the focused container
 bindsym $mod+f fullscreen toggle
@@ -139,9 +143,11 @@ exec --no-startup-id redshift -O 3000
 #         Modes
 ################################################################################
 
+set $interval 10
+
 mode "resize" {
-  bindsym h resize shrink width $interval px or $interval ppt
-  bindsym j resize grow height $interval px or $interval ppt
+  bindsym h resize shrink width $interval px  or $interval ppt
+  bindsym j resize grow height $interval px  or $interval ppt
   bindsym k resize shrink height $interval px or $interval ppt
   bindsym l resize grow width $interval px or $interval ppt
 
@@ -172,41 +178,66 @@ mode "$mode_system" {
 }
 bindsym $mod+Delete mode "$mode_system"
 
-mode "brightness" {
-  set $change_brightness "/home/cashweaver/.scripts/brightness/change_brightness.sh"
+set $mode_brightness Brightness: (l/L) Left ↑/↓, (c/C) Center ↑/↓, (r/R) Right ↑/↓, (↑/↓) All ↑/↓
+mode "$mode_brightness" {
+  set $change_brightness "/usr/local/google/home/cashweaver/.scripts/brightness/change_brightness.sh"
 
   # all monitors
   bindsym Down exec --no-startup-id bash $change_brightness "down"
   bindsym Up exec --no-startup-id bash $change_brightness "up"
 
   # north monitor
-  bindsym n exec --no-startup-id bash $change_brightness "down" "north"
-  bindsym Shift+n exec --no-startup-id bash $change_brightness "up" "north"
+  bindsym l exec --no-startup-id bash $change_brightness "down" "left"
+  bindsym Shift+l exec --no-startup-id bash $change_brightness "up" "left"
 
   # south monitor
-  bindsym s exec --no-startup-id bash $change_brightness "down" "south"
-  bindsym Shift+s exec --no-startup-id bash $change_brightness "up" "south"
+  bindsym c exec --no-startup-id bash $change_brightness "down" "center"
+  bindsym Shift+c exec --no-startup-id bash $change_brightness "up" "center"
 
   # west monitor
-  bindsym w exec --no-startup-id bash $change_brightness "down" "west"
-  bindsym Shift+w exec --no-startup-id bash $change_brightness "up" "west"
+  bindsym r exec --no-startup-id bash $change_brightness "down" "right"
+  bindsym Shift+r exec --no-startup-id bash $change_brightness "up" "right"
 
  # back to normal: Enter or Escape
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
-bindsym $mod+b mode "brightness"
+bindsym $mod+b mode "$mode_brightness"
 
 set $mode_screenshot Screenshot: (s) select, (c) select to clipboard
 mode "$mode_screenshot" {
-  bindsym s exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select.sh, mode "default"
-  bindsym c exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
+  bindsym s exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select.sh, mode "default"
+  bindsym c exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
 
  # back to normal: Enter or Escape
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
 bindsym $mod+s mode "$mode_screenshot"
+
+set $mode_volume Volume: (0-9) set volume to X0%, (k|up) volume up, (j|down) volume down, (m) toggle mute
+mode "$mode_volume" {
+  bindsym 0 exec --no-startup-id amixer set Master 0
+  bindsym 1 exec --no-startup-id amixer set Master 10%
+  bindsym 2 exec --no-startup-id amixer set Master 20%
+  bindsym 3 exec --no-startup-id amixer set Master 30%
+  bindsym 4 exec --no-startup-id amixer set Master 40%
+  bindsym 5 exec --no-startup-id amixer set Master 50%
+  bindsym 6 exec --no-startup-id amixer set Master 60%
+  bindsym 7 exec --no-startup-id amixer set Master 70%
+  bindsym 8 exec --no-startup-id amixer set Master 80%
+  bindsym 9 exec --no-startup-id amixer set Master 90%
+  bindsym Up exec --no-startup-id amixer set Master 2%+
+  bindsym Down exec --no-startup-id amixer set Master 2%-
+  bindsym k exec --no-startup-id amixer set Master 2%+
+  bindsym j exec --no-startup-id amixer set Master 2%-
+  bindsym m exec --no-startup-id amixer set Master toggle
+
+ # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+v mode "$mode_volume"
 
 
 
@@ -223,3 +254,5 @@ for_window [class=".*"] border none
 #                                 Keybindings                                  #
 ################################################################################
 
+bindsym $mod+Up exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/dock.sh
+bindsym $mod+Down exec --no-startup-id bash /usr/local/google/home/cashweaver/.scripts/undock.sh

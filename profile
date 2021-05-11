@@ -27,12 +27,16 @@ if [ -d "$HOME/.local/bin" ] ; then
 fi
 
 #eval $(dircolors /home/cashweaver/third_party/dircolors-solarized/dircolors.256dark)
-eval $(dircolors /home/cashweaver/.config/dircolors/dircolors-solarized/dircolors.256dark)
+#eval $(dircolors /home/cashweaver/.config/dircolors/dircolors-solarized/dircolors.256dark)
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 source "${DIR}/.scripts/config/monitors.sh"
 
+xrandr --output $primary_monitor_output_name --primary
+xrandr --output $east_monitor_output_name --rotate left --right-of $north_monitor_output_name
 xrandr --output $north_monitor_output_name --rotate normal --above $south_monitor_output_name
-xrandr --output $south_monitor_output_name --rotate normal --below $north_monitor_output_name --primary
-xrandr --output $west_monitor_output_name --rotate left --left-of $north_monitor_output_name
+xrandr --output $south_monitor_output_name --rotate normal --below $north_monitor_output_name
+#xrandr --output $west_monitor_output_name --rotate left --left-of $north_monitor_output_name
+
+source "$HOME/.screenlayout/triple_vertical.sh"
