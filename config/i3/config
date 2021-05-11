@@ -5,6 +5,13 @@
 # Use alt as mod key
 set $mod Mod1
 
+#System/Super/Win/Meta
+#set $mod Mod4
+
+set $monitor_north DP-1
+set $monitor_south DP-2
+set $monitor_west DP-3
+
 ################################################################################
 #         Look and Feel
 ################################################################################
@@ -23,13 +30,17 @@ bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
 
 # start a terminal
-bindsym $mod+Return exec i3-sensible-terminal
+#bindsym $mod+Return exec i3-sensible-terminal
+bindsym $mod+Return exec urxvt
 
 # kill focused window
 bindsym $mod+Shift+q kill
 
 # start dmenu (a program launcher)
-bindsym $mod+d exec dmenu_run
+#bindsym $mod+d exec dmenu_run
+#bindsym $mod+d exec rofi
+#bindsym $mod+d exec rofi -show run -lines 3 -eh 2 -width 100 -padding 300 -opacity "85"
+bindsym $mod+d exec rofi -combi-modi drun#ssh -show combi
 
 ################################################################################
 #         Movement and Focus                                                  
@@ -116,6 +127,18 @@ bindsym $mod+Shift+8 move container to workspace 8
 bindsym $mod+Shift+9 move container to workspace 9
 bindsym $mod+Shift+0 move container to workspace 10
 
+# assign workspaces to monitors 
+workspace 1 output $monitor_south
+workspace 2 output $monitor_south
+workspace 3 output $monitor_south
+workspace 4 output $monitor_south
+workspace 5 output $monitor_north
+workspace 6 output $monitor_north
+workspace 7 output $monitor_north
+workspace 8 output $monitor_north
+workspace 9 output $monitor_west
+workspace 0 output $monitor_west
+
 ################################################################################
 #         Status Bar
 ################################################################################
@@ -139,6 +162,7 @@ exec --no-startup-id redshift -O 3000
 #         Modes
 ################################################################################
 
+# Resize windows
 mode "resize" {
   bindsym h resize shrink width $interval px or $interval ppt
   bindsym j resize grow height $interval px or $interval ppt
@@ -156,6 +180,7 @@ mode "resize" {
 }
 bindsym $mod+r mode "resize"
 
+# i3lock; logout, shutdown, etc
 set $Locker i3lock --no-unlock-indicator --image=/home/cashweaver/Pictures/backgrounds/locked-tile.png --tiling --ignore-empty-password && sleep 1
 set $mode_system System: (l) lock, (e) logout, (s) suspend, (h) hibernate, (r) reboot, (Shift+s) shutdown
 mode "$mode_system" {
@@ -172,6 +197,7 @@ mode "$mode_system" {
 }
 bindsym $mod+Delete mode "$mode_system"
 
+# Brightness
 mode "brightness" {
   set $change_brightness "/home/cashweaver/.scripts/brightness/change_brightness.sh"
 
@@ -187,28 +213,63 @@ mode "brightness" {
   bindsym s exec --no-startup-id bash $change_brightness "down" "south"
   bindsym Shift+s exec --no-startup-id bash $change_brightness "up" "south"
 
+  # east monitor
+  bindsym e exec --no-startup-id bash $change_brightness "down" "east"
+  bindsym Shift+e exec --no-startup-id bash $change_brightness "up" "east"
+
   # west monitor
   bindsym w exec --no-startup-id bash $change_brightness "down" "west"
   bindsym Shift+w exec --no-startup-id bash $change_brightness "up" "west"
 
- # back to normal: Enter or Escape
+  # back to normal: Enter or Escape
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
 bindsym $mod+b mode "brightness"
 
+# Screenshots
 set $mode_screenshot Screenshot: (s) select, (c) select to clipboard
 mode "$mode_screenshot" {
   bindsym s exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select.sh, mode "default"
   bindsym c exec --no-startup-id bash /home/cashweaver/.scripts/screenshot/select_to_clipboard.sh, mode "default"
 
+  # back to normal: Enter or Escape
+  bindsym Return mode "default"
+  bindsym Escape mode "default"
+}
+bindsym $mod+p mode "$mode_screenshot"
+
+# Sound
+set $mode_sound Sound: (j) Next, (k) Prev, (s) Stop, (p) Play/Pause, (Up/Down) Volume, (0-9) Volume, (m) mute, (M) unmute
+mode "$mode_sound" {
+  bindsym h exec "playerctl --all-players position 10-"
+  bindsym k exec "playerctl --all-players previous"
+  bindsym j exec "playerctl --all-players next"
+  bindsym l exec "playerctl --all-players position 10+"
+
+  bindsym s exec "playerctl --all-players stop"
+  bindsym p exec "playerctl --all-players play-pause"
+
+  bindsym Down exec "amixer set Master,0 2%-"
+  bindsym Up exec "amixer set Master,0 2%+"
+  bindsym 1 exec "amixer set Master,0 10%"
+  bindsym 2 exec "amixer set Master,0 20%"
+  bindsym 3 exec "amixer set Master,0 30%"
+  bindsym 4 exec "amixer set Master,0 40%"
+  bindsym 5 exec "amixer set Master,0 50%"
+  bindsym 6 exec "amixer set Master,0 60%"
+  bindsym 7 exec "amixer set Master,0 70%"
+  bindsym 8 exec "amixer set Master,0 80%"
+  bindsym 9 exec "amixer set Master,0 90%"
+  bindsym 0 exec "amixer set Master,0 0%"
+  bindsym m exec "amixer set Master,0 mute"
+  bindsym Shift+m exec "amixer set Master,0 unmute"
+
  # back to normal: Enter or Escape
   bindsym Return mode "default"
   bindsym Escape mode "default"
 }
-bindsym $mod+s mode "$mode_screenshot"
-
-
+bindsym $mod+s mode "$mode_sound"
 
 ################################################################################
 #         Programs
@@ -220,6 +281,11 @@ bindsym $mod+s mode "$mode_screenshot"
 for_window [class=".*"] border none
 
 ################################################################################
-#                                 Keybindings                                  #
+#         Keybindings
 ################################################################################
 
+################################################################################
+#         Autolaunch
+################################################################################
+
+set $scripts_path "/home/cashweaver/.scripts"

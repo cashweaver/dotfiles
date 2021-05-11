@@ -31,8 +31,16 @@ eval $(dircolors /home/cashweaver/.config/dircolors/dircolors-solarized/dircolor
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-source "${DIR}/.scripts/config/monitors.sh"
+source "${DIR}/.screenlayout/landscape_portrait_portrait.sh"
+#source "${DIR}/.screenlayout/left_center_right.sh"
 
-xrandr --output $north_monitor_output_name --rotate normal --above $south_monitor_output_name
-xrandr --output $south_monitor_output_name --rotate normal --below $north_monitor_output_name --primary
-xrandr --output $west_monitor_output_name --rotate left --left-of $north_monitor_output_name
+#source "${DIR}/.scripts/config/monitors.sh"
+#xrandr \
+  #--output DVI-D-1 --off \
+  #--output DP-3 --off \
+  #--output $left_monitor_output_name --off \
+  #--output $center_monitor_output_name --off \
+  #--output $right_monitor_output_name --off \
+  #--output $left_monitor_output_name --mode 2560x1440 --pos 0x0 --rotate right \
+  #--output $center_monitor_output_name --mode 2560x1440 --pos 1440x0 --rotate right \
+  #--output $right_monitor_output_name --primary --mode 2560x1440 --pos 2880x0 --rotate left
